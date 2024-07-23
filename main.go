@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -63,6 +64,24 @@ func main() {
 	eventSignature := []byte("CommitmentStored(bytes32,address,address,uint256,uint64,bytes32,uint64,uint64,string,string,bytes32,bytes,bytes,uint64,bytes)")
 	eventHash := crypto.Keccak256Hash(eventSignature)
 
+	var events []struct {
+		CommitmentIndex     common.Hash
+		Bidder              common.Address
+		Commiter            common.Address
+		Bid                 *big.Int
+		BlockNumber         uint64
+		BidHash             common.Hash
+		DecayStartTimeStamp uint64
+		DecayEndTimeStamp   uint64
+		TxnHash             string
+		RevertingTxHashes   string
+		CommitmentHash      common.Hash
+		BidSignature        []byte
+		CommitmentSignature []byte
+		DispatchTimestamp   uint64
+		SharedSecretKey     []byte
+	}
+
 	for _, vLog := range logs {
 		if len(vLog.Topics) > 0 && vLog.Topics[0] == eventHash {
 			fmt.Println("Log:", vLog)
@@ -111,6 +130,22 @@ func main() {
 			fmt.Printf("  CommitmentSignature: %x\n", event.CommitmentSignature)
 			fmt.Printf("  DispatchTimestamp: %d\n", event.DispatchTimestamp)
 			fmt.Printf("  SharedSecretKey: %x\n", event.SharedSecretKey)
+
+			// Add the event to the list of events
+			events = append(events, event)
 		}
 	}
+
+	// Write the events to a JSON file
+	jsonData, err := json.MarshalIndent(events, "", "  ")
+	if err != nil {
+		log.Fatalf("Failed to marshal events to JSON: %v", err)
+	}
+
+	err = ioutil.WriteFile("events.json", jsonData, 0644)
+	if err != nil {
+		log.Fatalf("Failed to write JSON file: %v", err)
+	}
+
+	fmt.Println("Events successfully written to events.json")
 }
